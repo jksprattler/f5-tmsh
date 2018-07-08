@@ -1,3 +1,8 @@
+########################################################################
+# Use this guide for building out new F5's via CLI                     #
+# Contains helpful TMSH commands for the majority of aspects in a build#
+########################################################################
+
 ::ASSIGN THE MGMT IP, DG AND HOSTNAME::
 
 tmsh create sys management-ip x.x.x.x/24
