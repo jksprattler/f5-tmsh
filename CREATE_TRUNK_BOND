@@ -1,0 +1,117 @@
+• Configure trunk, and VLANs, as in the below examples.  (If building vCMP host, these can then later be used within the vCMP guests.  If building vCMP guest, they inherit their network configs from the host, so this step is not necessary.)  If you’re building a Viprion chassis, each of the blades should have a connection to the switch, and both network interfaces should be configured within a “trunk” on the F5.  If it’s not a Viprion, then the trunk is not needed and the VLAN can be attached directly to the 1.1 interface.
+
+#If creating the F5 trunk/port channel for the first time run this tmsh command:
+tmsh create net trunk bond_external  interfaces add { 1/1.1 2/1.1 } lacp enabled
+#If you need to modify an existing interface to join a new trunk/port channel, run these tmsh commands:
+tmsh -q -c 'modify net vlan external interfaces delete { 1/1.1 } ; create net trunk bond_external  interfaces add { 1/1.1 2/1.1 } lacp enabled; modify net vlan external interfaces add { bond_external }'
+	
+• On the switch side, if you’re building a Viprion with multiple blades, the interface for each blade should be added to a port channel and 802.1q trunk.  If  you’re building a Viprion chassis with only a single blade, it should still be set up in a port channel and 802.1q trunk to allow for easier addition of another chassis and/or VLAN at a later date.  If you’re building a non-chassis-based physical system, only the single interface needs to be configured. 
+
+F5 Switch Templates:
+
+Port channel # = $PORT_CHANNEL$
+F5 Port Description = $F5_NAME$
+Native Vlan = $NATIVE_VLAN$
+Allowed Vlans = $ALLOWED_VLAN$
+Ethernet Port #1 =  $ETH1$
+Ethernet Port #2 = $ETH2$
+
+5xxx NXOS Switch:
+conf t
+interface port-channel$PORT_CHANNEL$
+ description C::$F5_NAME$
+ switchport mode trunk
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ spanning-tree port type edge trunk
+!
+default interface $ETH1$
+interface $ETH1$
+ description C::$F5_NAME$
+ switchport mode trunk
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ spanning-tree port type edge trunk
+ channel-group $PORT_CHANNEL$ mode active
+ no shutdown
+!
+default interface $ETH2$
+interface $ETH2$
+ description C::$F5_NAME$
+ switchport mode trunk
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ spanning-tree port type edge trunk
+ channel-group $PORT_CHANNEL$ mode active
+ no shutdown
+end
+copy run start
+ 
+6500 IOS Switch:
+conf t
+interface port-channel$PORT_CHANNEL$
+ description C::$F5_NAME$
+ switchport
+ switchport trunk encapsulation dot1q
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ switchport mode trunk
+ spanning-tree portfast trunk
+!
+default interface $ETH1$
+interface $ETH1$
+ description C::$F5_NAME$
+ switchport
+ switchport trunk encapsulation dot1q
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ switchport mode trunk
+ spanning-tree portfast trunk
+ channel-group $PORT_CHANNEL$ mode active
+ no shutdown
+!
+default interface $ETH2$
+interface $ETH2$
+ description C::$F5_NAME$
+ switchport
+ switchport trunk encapsulation dot1q
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ switchport mode trunk
+ spanning-tree portfast trunk
+ channel-group $PORT_CHANNEL$ mode active
+ no shutdown
+end
+copy run start
+ 
+4900 IOS Switch:
+conf t
+interface port-channel$PORT_CHANNEL$
+ description C::$F5_NAME$
+ switchport
+ switchport mode trunk
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ spanning-tree portfast trunk
+!
+default interface $ETH1$
+interface $ETH1$
+ description C::$F5_NAME$
+ switchport mode trunk
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ spanning-tree portfast trunk
+ channel-group $PORT_CHANNEL$ mode active
+ no shutdown
+!
+default interface $ETH2$
+interface $ETH2$
+ description C::$F5_NAME$
+ switchport mode trunk
+ switchport trunk native vlan $NATIVE_VLAN$
+ switchport trunk allowed vlan $ALLOWED_VLAN$
+ spanning-tree portfast trunk
+ channel-group $PORT_CHANNEL$ mode active
+ no shutdown
+end
+copy run start
