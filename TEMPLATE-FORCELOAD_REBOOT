@@ -1,0 +1,49 @@
+PRE-CHECK:
+
+Confirm that all application teams have completed their pre-checks. 
+
+On bigipviprion1 and On bigipviprion2:
+tmsh show ltm virtual | grep "Availability     : available" | wc -l
+tmsh show ltm pool | grep "Availability : available " | wc -l
+
+K13030: Forcing the mcpd process to reload the BIG-IP configuration - https://support.f5.com/csp/article/K13030
+
+IMPLEMENTATION :
+
+Save the config, Pull a config Sync over *from* Active to Standby, check cluster, touch MCPD file and reboot on both F5's 1 at a time starting with current Standby box
+
+On bigipviprion2:
+tmsh save sys config
+tmsh run cm config-sync from-group ltmfailover
+tmsh show sys cluster
+clsh touch /service/mcpd/forceload
+clsh reboot
+
+Allow the chassis/blades 10-15 minutes to come back online from the reboot
+
+Once bigipviprion1 is back online and stable, proceed with a failover and check cluster, touch MCPD file and reboot from bigipviprion1
+
+On bigipviprion1:
+tmsh run sys failover standby 
+tmsh show sys failover
+tmsh save sys config
+tmsh show sys cluster
+clsh touch /service/mcpd/forceload
+clsh reboot
+
+Failback to make bigipviprion1 the Active Unit again:
+
+On bigipviprioncorpf2:
+tmsh run sys failover standby
+tmsh show sys failover
+
+POST-CHECKS 
+
+Application team has to do post-checks after mcpd forceload and reboot. 
+
+On bigipviprion1 and On bigipviprion2 and make sure stats line up with Pre-checks:
+tmsh show ltm virtual | grep "Availability     : available" | wc -l
+tmsh show ltm pool | grep "Availability : available " | wc -l
+
+Run a tail on the LTM logs for reported affected pools and check to see that the monitors are matching between bigipviprion1/2 as reported discrepancies were seen related to the incident:
+tail -f /var/log/ltm | grep 'PRODPOOL-9142\|PRODPOOL-9159\|PRODPOOL-9172'
