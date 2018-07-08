@@ -1,0 +1,221 @@
+::ASSIGN THE MGMT IP, DG AND HOSTNAME::
+
+tmsh create sys management-ip x.x.x.x/24
+tmsh create sys management-route default gateway x.x.x.254
+tmsh modify sys global-settings hostname <Insert>.site.com
+
+::ACTIVATE THE LICENSE VIA GUI OR CLI BASH:
+
+cat /config/RegKey.license
+get_dossier -b "XXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+#Create the new license file
+>/config/bigip.license
+#Copied complete Dossier output and pasted into https://activate.f5.com/license/
+#F5 license server returns license > download copy of the License.txt file and SCP it from local PC to F5
+[root@machine ~]# scp /home/jennas/License.txt x.x.x.x:/config/bigip.license
+reloadlic
+
+::PROVISION VCMP AND DEPROVISION LTM FOR VCMP HOSTS::
+
+tmsh modify sys provision ltm level none
+tmsh modify sys provision vcmp level dedicate
+
+::PROVISION LTM OR ASM::
+tmsh modify sys provision ltm level nominal
+tmsh modify sys provision asm level nominal
+
+::GENERATE SELF-SIGNED CERT AND STANDARD CREDS::
+
+openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /config/httpd/conf/ssl.key/server.key -out /config/httpd/conf/ssl.crt/server.crt -subj "/CN=$HOSTNAME/C=US/ST=$STATE/L=$CITY_LOCATION/O=$COMPANY_NAME"
+bigstart restart httpd
+bash
+passwd
+tmsh modify auth user admin prompt-for-password
+
+::INSTALL ISO AND HOTFIX USING BASH AND BOOT INTO NEWLY INSTALLED VOLUME::
+
+HD=$(tmsh show sys software | grep no| sort -k4 -n | head -1 |awk '{print $1}')
+tmsh install sys software image BIGIP-11.6.1.0.0.317.iso volume $HD
+sleep 2
+PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}')
+while [ $PROGRESS != "complete" ]; do tmsh show sys software; sleep 1; PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}'); done
+
+HD=$(tmsh show sys software | grep no| sort -k4 -n | head -1 |awk '{print $1}')
+tmsh install sys software hotfix Hotfix-BIGIP-11.6.1.2.0.338-HF2.iso volume $HD
+sleep 2
+PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}')
+while [ $PROGRESS != "complete" ]; do tmsh show sys software; sleep 1; PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}'); done
+
+PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}')
+while [ $PROGRESS != "complete" ]; do tmsh show sys software; sleep 1; PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}'); done
+tmsh reboot volume $HD
+
+::DEPLOY A VCMP GUEST FROM AN APPLIANCE (ie 5250)::
+
+tmsh create vcmp guest <Guest_Device_Name> cores-per-slot 2 hostname <Guest_Hostname> initial-image BIGIP-11.6.1.0.0.317.iso initial-hotfix Hotfix-BIGIP-11.6.1.2.0.338-HF2.iso management-ip x.x.x.x/24 state deployed
+
+::DEPLOY A VCMP GUEST FROM A VIPRION AND PROVISION SLOTS/BLADES::
+
+tmsh create vcmp guest <Guest_Device_Name> allowed-slots add { 1 2 3 4 } cores-per-slot 1 slots 2 hostname <Guest_Hostname> initial-image BIGIP-11.6.1.0.0.317.iso initial-hotfix Hotfix-BIGIP-11.6.1.2.0.338-HF2.iso management-ip x.x.x.x/24 vlans add { DCMS-HA-VLAN } state deployed
+
+::MONITOR VCMP GUEST DEPLOYMENT VIA GUI OR CLI::
+
+tmsh show vcmp guest <hostname>
+tmsh show vcmp guest <hostname> all-properties
+watch tmsh show vcmp guest <hostname>
+
+::CONFIG FOR SYSTEM SETTINGS, TIMEZONE, DNS, NTP::
+
+tmsh modify sys db ui.system.preferences.recordsperscreen { value "500" } 
+tmsh modify sys db ui.system.preferences.startscreen { value "virtual_servers" } 
+tmsh modify sys db ui.system.preferences.advancedselection { value "advanced" } 
+tmsh modify cli preference pager disabled display-threshold 0 
+tmsh modify cli global-settings service number 
+tmsh modify sys ntp timezone UTC
+tmsh modify sys ntp servers replace-all-with { x.x.x.x x.x.x.x }
+tmsh modify sys dns name-servers replace-all-with { x.x.x.x x.x.x.x }
+tmsh modify sys global-settings gui-setup disabled
+
+::VERIFY DNS AND NTP CONNECTIVITY::
+
+dig +short test.site.com
+ntpq -np
+
+::COPY CERTIFICATE AND KEYS TO THE F5::
+
+scp /certstore/crt/symantec_SHA2.crt root@<MGMT_IP>:/config/ssl/ssl.crt/
+scp /certstore/crt/wildcard.site.com.161110.crt root@<MGMT_IP>:/config/ssl/ssl.crt/
+scp /certstore/key/wildcard.site.com.161110.key root@<MGMT_IP>:/config/ssl/ssl.key/
+
+::INSTALL THE CERTIFICATES AND KEYS ON THE F5::
+
+tmsh install sys crypto cert symantec_SHA2.crt from-local-file /config/ssl/ssl.crt/symantec_SHA2.crt
+tmsh install sys crypto cert wildcard.site.com.161110.crt from-local-file /config/ssl/ssl.crt/wildcard.site.com.161110.crt
+tmsh install sys crypto key wildcard.site.com.161110.key from-local-file /config/ssl/ssl.key/wildcard.site.com.161110.key
+
+::CREATE THE CLIENT-SSL PROFILES::
+
+tmsh create ltm profile client-ssl TR-DEFAULT { defaults-from clientssl key default.key  cert default.crt chain symantec_SHA2.crt ciphers NATIVE:!SSLv2:!SSLv3:!EXPORT:!LOW:!MD5:!ADH:!RC4:!DHE:@SPEED options { no-tlsv1.1 }}
+tmsh create ltm profile client-ssl wildcard.site.com {defaults-from TR-DEFAULT key wildcard.site.com.161110.key cert wildcard.site.com.161110.crt chain symantec_SHA2.crt }
+
+::MODIFY THE DEFAULT FASTL4, HTTP PROFILES AND SET DEFAULT ICMP NODE MONITOR::
+
+tmsh modify ltm profile fastl4 fastL4 pva-acceleration none 
+tmsh modify ltm profile http http insert-xforwarded-for enabled 
+tmsh modify ltm profile http http header-insert REMOTEADDRESS:[IP::remote_addr] 
+###Run the default node icmp rule on each box, this does not sync over###
+tmsh modify ltm default-node-monitor rule icmp 
+
+::CREATE THE IRULES::
+
+tmsh 
+load sys config merge from-terminal 
+####Enter configuration. Press CTRL-D to submit or CTRL-C to cancel.####
+ltm rule GENERIC_80_TO_443_REDIR { 
+when HTTP_REQUEST { 
+HTTP::respond 301 Location "https://[HTTP::host][HTTP::uri]" 
+} 
+} 
+ltm rule SSLCIPHER { 
+when HTTP_REQUEST { 
+HTTP::header insert SSLClientCipher [SSL::cipher name],\x20version=[SSL::cipher version],\x20bits=[SSL::cipher bits] 
+} 
+####Press CTRL-D to submit####
+
+::SETUP SNMP::
+
+tmsh modify sys snmp sys-location "Virtual Machine under MY-BIGIP-VIPRION"
+tmsh modify sys snmp sys-contact Support@supppprtsite.com
+tmsh modify sys snmp communities replace-all-with { ixyz_123_ro_1 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_2 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_3 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_4 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_5 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_6 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_7 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } ixyz_123_ro_8 { community-name xyz-123-ro oid-subset .1 source x.x.x.x } } traps replace-all-with { ix_x_x_x_1 {community xyz-123-ro host x.x.x.x } ix_x_x_x_1 { community xyz-123-ro host x.x.x.x } } allowed-addresses replace-all-with { 127. x.x.x.0/255.255.224.0 x.x.x.0/255.255.255.0 x.x.x.0/255.255.255.0 } auth-trap enabled 
+
+::AD AUTHENTICATION FOR ALL HOSTS/GUESTS::
+
+tmsh create auth ldap system-auth { login-attribute samaccountname port 636 search-base-dn DC=mgmt,DC=zxyz,DC=com servers replace-all-with { mgmtadldap.site.com } ssl enabled user-template "CN=%s,OU=Administrative Accounts,OU=System Administration,DC=mgmt,DC=zxyz,DC=com" } 
+###Below contains the BIND-DN:
+tmsh create auth ldap system-auth { login-attribute samaccountname port 636 search-base-dn DC=mgmt,DC=zxyz,DC=com servers replace-all-with { mgmtadldap.site.com } ssl enabled bind-dn "CN=F5AuthUser,OU=Service Accounts,OU=System Administration,DC=mgmt,DC=zxyz,DC=com" bind-pw "asdgasdgrelghkag (your bind password)" }
+tmsh modify auth remote-role role-info add { network_admin { attribute memberOF=CN=M-F5ADMINS,OU=Groups,OU=SITE-ZXYZCorp,DC=mgmt,DC=zxyz,DC=com console tmsh line-order 1000 role administrator user-partition All } } 
+tmsh modify auth remote-role role-info add { network_manager { attribute memberOF=CN=M-F5MANAGERS,OU=Groups,OU=SITE-ZXYZCorp,DC=mgmt,DC=zxyz,DC=com console disabled line-order 1100 role manager user-partition All } } 
+tmsh modify auth remote-user default-role guest 
+tmsh modify auth source type active-directory 
+tmsh modify sys db config.auditing value enable
+tmsh save sys config
+
+* Verify that F5s can reach mgmtadldap.site.com on port 636 
+
+ping mgmtadldap.site.com
+telnet mgmtadldap.site.com 636
+
+::CONFIG THE SECURITY BANNER FOR GUI LOGIN::
+SYSTEM -> PREFERENCES
+
+This computer system is the property of ZXYZ SITE and may be accessed only by authorized users. Unauthorized use of this system is strictly prohibited and may be subject to criminal prosecution. Your use of ZXYZ SITE systems and networks is permitted only in accordance with ZXYZ SITE policies, including the Code of Business Conduct and Ethics. 
+
+Subject to applicable laws and regulations, ZXYZ SITE reserves the right to monitor any activity or communication on this system and to retrieve any information stored in the system. Thus, individuals should have no expectation of privacy when using this system, regardless of the type of device or portable media connected to this system (e.g., floppy disks, PDAs and other hand-held peripherals, CD-ROMs, etc.) 
+
+By accessing the ZXYZ SITE system, you consent to such monitoring and to the retrieval of information required for law enforcement or for the purpose of protecting ZXYZ SITE intellectual property and the confidentiality of our corporate, client, and personnel data.
+
+::CONFIG THE SECURITY BANNER FOR SSH LOGIN::
+System  ››  Configuration : Device : SSHD
+
+***********************************************************************
+*                                                                     *
+*  UNAUTHORIZED ACCESS TO THIS NETWORK DEVICE IS STRICTLY PROHIBITED  *
+*                                                                     *
+*  This is a private network.  You must have explicit permission to   *
+*  access or configure this device.  All activities performed on this *
+*  device are logged and violations of this policy may result in      *
+*  disciplinary action, and may be reported to law enforcement.       *
+*                                                                     *
+*             Use by unauthorized persons is prohibited.              *
+*                                                                     *
+***********************************************************************
+
+::CREATE THE TRUNK::
+tmsh create net trunk bond-TRUNK interfaces add { 2.1 2.2 } lacp enabled
+
+::SYNTAX FOR CREATING VLANS::
+tmsh create net vlan NEW-VLAN interfaces add { bond-TRUNK { tagged } } tag 123
+
+::SYNTAX FOR CREATING SELF IP LOCAL::
+create net self x.x.x.x allow-service default vlan NEW-VLAN address x.x.x.x/255.255.255.248
+
+::SYNTAX FOR CREATING FLOATING IPS::
+create net self x.x.x.x allow-service default vlan NEW-VLAN address x.x.x.x/255.255.255.248 traffic-group traffic-group-1
+
+::SYNTAX FOR CONFIGURING CONFIGSYNC IP::
+modify cm device modify cm device hostname2.site.com unicast-address { { ip x.x.x.x }} configsync-ip x.x.x.x
+
+::SYNTAX FOR CONFIGURING UNICAST FAILOVER ADDRESS::
+modify cm device hostname2.site.com unicast-address { { ip x.x.x.x }}
+
+::SYNTAX FOR CONFIGURING MINIMUM NUMBER OF BLADES UP::
+modify sys cluster default min-up-members 1
+
+::SYNTAX FOR CHOOSING MIRROR IP::
+modify cm device hostname2.site.com mirror-ip x.x.x.x
+
+::SYNTAX FOR ADD DEVICE TO PEERLIST::
+modify cm trust-domain Root ca-devices add { x.x.x.x } name hostname1.site.com username admin password xxxxxx
+
+::SYNTAX FOR CREATE SYNCGROUP::
+create cm device-group ltmsyncgroup devices add { hostname1.site.com hostname2.site.com } type sync-failover
+
+::CHECK THAT THE CONFIG LOADS:
+tmsh load sys config verify
+tmsh load sys config
+
+::ALWAYS SAVE YOUR CONFIG BEFORE YOU LOGOFF::
+tmsh save sys config
+
+
+
+
+
+
+
+
+
+
+
+
+
