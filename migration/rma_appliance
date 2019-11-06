@@ -1,0 +1,38 @@
+::::Use find/replace for each of the variables listed below pertaining to your specific scenario::::
+
+$PS_DL = Proximity Services Team Email DL typically DC-PS-EAGAN@tr.com however, for the Remote/Colo sites be sure to list all email contacts specific to that site
+$PS_TEAM = Proximity Services Team (ie DC-PS-EAGAN)
+$TMM_PORTS = F5 TMM (traffic) ports from faulty/problematic appliance
+$LB_NAME = Device name of the faulty/problematic appliance
+$REPLACEMENT_SN = RMA serial number
+$DEFECTIVE_SN = faulty serial number
+$SHAREPOINT_WI = Insert link to internal team sharepoint site for the detailed work insturction document specific to the site/device being replaced and should be saved to the following directory: Data Center Support > Network Documents > Change Work Instructions > Year > Month
+
+::::RMA specific details provided by F5 TAC::::
+
+Service Request: #####
+RMA Service Order: #####
+Internal Ticket #: #####
+Shipped: #####
+Tracking Number: #####
+Defective Serial Number: #####
+Replacement Serial Number: #####
+Base Registration Key: #####
+
+::::General Overview of work between NETWORK-SUPPORT-TR and the Proximity Services Team::::
+
+Replace faulty $LB_NAME steps:
+
+1. NS will send kick off email to the following proximity team emails to proceed with next steps:
+$PS_DL
+2. $PS_TEAM will prepare the new RMA unit $REPLACEMENT_SN to replace the faulty unit $DEFECTIVE_SN in the rack by connecting only console and mgmt cables
+3. NS will proceed with Step 1) in the WI linked to internal sharepoint site
+4. NS will email out to $PS_TEAM upon step 9) to connect the TMM cables (hand off cables) and verify they come up for TMM ports $TMM_PORTS
+
+::::Detailed instructions for NETWORK-SUPPORT-TR on how to prepare the RMA unit for the production swap::::
+
+$SHAREPOINT_WI
+
+::::Example past SNOW changes for reference::::
+
+CHG0580825 Replace faulty EQU-LGR-LB01 bigipecomsyd1

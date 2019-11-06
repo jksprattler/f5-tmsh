@@ -1,0 +1,6 @@
+bash
+HD=$(tmsh show sys software | grep no| sort -k4 -n | head -1 |awk '{print $1}')
+tmsh install sys software image BIGIP-11.6.3.3-0.0.3.iso volume $HD
+sleep 2
+PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}')
+while [ $PROGRESS != "complete" ]; do tmsh show sys software; sleep 3; PROGRESS=$(tmsh show sys software | grep $HD | head -1 | awk '{print $NF}'); done

@@ -1,0 +1,43 @@
+::::Use find/replace for each of the variables listed below pertaining to your specific scenario::::
+
+$PS_DL = Proximity Services Team Email DL typically DC-PS-EAGAN@tr.com however, for the Remote/Colo sites be sure to list all email contacts specific to that site
+$PS_TEAM = Proximity Services Team (ie DC-PS-EAGAN)
+$TMM_PORTS = F5 TMM (traffic) ports from faulty/problematic appliance
+$LB_NAME = Device name of the faulty/problematic appliance
+$F5_TAC# = F5 Vendor TAC case#
+$F5_TAC#_PASSWORD = F5 Vendor TAC case specific password provided on initial case creation email
+
+::::General Overview of work between NETWORK-SUPPORT-TR and the Proximity Services Team::::
+
+Note :PS team will make sure the cables are labelled
+1. NS will send kick off email to the following proximity team emails:
+$PS_DL
+2. $PS_TEAM will remove traffic links $TMM_PORTS from the $LB_NAME and leave the management and console cables connected
+3. NETWORK-SUPPORT will reboot $LB_NAME --> select EUD from boot menu,do the EUD test by running all tests
+4. NETWORK-SUPPORT will let $PS_TEAM team know once EUD test is done 
+5. $PS_TEAM team will proceed to re-connect traffic links $TMM_PORTS to the $LB_NAME
+
+::::Detailed instructions for NETWORK-SUPPORT-TR on how to run the EUD based on appropriate appliance model::::
+
+EUD Instructions Appliances: 800, 1600, 3600, 3900, 6900, 8900, 8950, 11000, 11050, EM4000
+https://techdocs.f5.com/content/kb/en-us/products/big-ip_ltm/releasenotes/related/eud-m-12-12-0/_jcr_content/pageContent/download/file.res/eud-m-12-12-0.pdf
+
+All instructions are detailed on the document above, but in short:
+- Ensure the $LB_NAME is the Standby unit, if not perform a failover and force $LB_NAME offline
+- Plug a physical console cable
+- Disconnect all network cables: $TMM_PORTS
+- Power off the $LB_NAME and power it back on
+- On the GRUB menu, select End User Diagnostics
+- Choose option A - Run all tests
+- This will take around 30 minutes
+- After, select D - Display test report log
+- Please save the displayed results to a file (for example, if using PuTTy, simply save the session as a log)
+- Please attach to this service request the results (can send us the file to the Server as indicated below):
+
+   Server - supportfiles.f5.com
+   Username - $F5_TAC#
+   Password - $F5_TAC#_PASSWORD
+
+::::Example past SNOW changes for reference::::
+
+CHG0573430 EUD Needed on EQU-LGR-LB01 bigipecomsyd1 | INC2143029
