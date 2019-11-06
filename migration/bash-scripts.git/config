@@ -1,7 +1,0 @@
-[core]
-	repositoryformatversion = 0
-	filemode = false
-	bare = true
-	ignorecase = true
-[remote "origin"]
-	url = https://git.sami.int.thomsonreuters.com/Jenna.Sprattler/bash-scripts.git
