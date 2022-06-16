@@ -1,13 +1,13 @@
 ::::Use find/replace for each of the variables listed below pertaining to your specific scenario::::
 
-$PS_DL = Proximity Services Team Email DL typically DC-PS-EAGAN@tr.com however, for the Remote/Colo sites be sure to list all email contacts specific to that site
-$PS_TEAM = Proximity Services Team (ie DC-PS-EAGAN)
+$PS_DL = Proximity Services Team Email DL typically DC-PS@ however, for the Remote/Colo sites be sure to list all email contacts specific to that site
+$PS_TEAM = Proximity Services Team
 $TMM_PORTS = F5 TMM (traffic) ports from faulty/problematic appliance
 $LB_NAME = Device name of the faulty/problematic appliance
 $F5_TAC# = F5 Vendor TAC case#
 $F5_TAC#_PASSWORD = F5 Vendor TAC case specific password provided on initial case creation email
 
-::::General Overview of work between NETWORK-SUPPORT-TR and the Proximity Services Team::::
+::::General Overview of work between NETWORK-SUPPORT and the Proximity Services Team::::
 
 Note :PS team will make sure the cables are labelled
 1. NS will send kick off email to the following proximity team emails:
@@ -17,7 +17,7 @@ $PS_DL
 4. NETWORK-SUPPORT will let $PS_TEAM team know once EUD test is done 
 5. $PS_TEAM team will proceed to re-connect traffic links $TMM_PORTS to the $LB_NAME
 
-::::Detailed instructions for NETWORK-SUPPORT-TR on how to run the EUD based on appropriate appliance model::::
+::::Detailed instructions for NETWORK-SUPPORT on how to run the EUD based on appropriate appliance model::::
 
 EUD Instructions Appliances: 800, 1600, 3600, 3900, 6900, 8900, 8950, 11000, 11050, EM4000
 https://techdocs.f5.com/content/kb/en-us/products/big-ip_ltm/releasenotes/related/eud-m-12-12-0/_jcr_content/pageContent/download/file.res/eud-m-12-12-0.pdf
@@ -40,4 +40,4 @@ All instructions are detailed on the document above, but in short:
 
 ::::Example past SNOW changes for reference::::
 
-CHG0573430 EUD Needed on EQU-LGR-LB01 bigipecomsyd1 | INC2143029
+<FIXME_INSERT>
