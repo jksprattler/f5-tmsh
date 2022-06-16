@@ -17,7 +17,7 @@ do
   sleep $sleep
   echo $domain 
 # Using +short to avoid auxiliary information.
-  ipaddress=`dig $domain +short @ns-apac-1.thomsonreuters.net` 
+  ipaddress=`dig $domain +short @[FIXME_NS_DOMAIN]` 
 #  nameserver=`dig ns $domain +short`
 # Using 'tr' to replace new lines with commas, and strip horizontal whitespace.
 # Now with commas as delimiters, software can convert results to spreadsheet.
