@@ -1,7 +1,7 @@
 ::::Use find/replace for each of the variables listed below pertaining to your specific scenario::::
 
-$PS_DL = Proximity Services Team Email DL typically DC-PS-EAGAN@tr.com however, for the Remote/Colo sites be sure to list all email contacts specific to that site
-$PS_TEAM = Proximity Services Team (ie DC-PS-EAGAN)
+$PS_DL = Proximity Services Team Email DL typically DC-PS however, for the Remote/Colo sites be sure to list all email contacts specific to that site
+$PS_TEAM = Proximity Services Team
 $VIPRION_NAME =  
 $TMM_PORTS = F5 TMM (traffic) ports from faulty/problematic blade
 $TMM_PORTS = F5 TMM (traffic) ports from faulty/problematic appliance
@@ -19,7 +19,7 @@ $HEALTHY_BLADE3_SLOT =
 $HEALTHY_BLADE4 = 
 $HEALTHY_BLADE4_SLOT = 
 
-::::General Overview of work between NETWORK-SUPPORT-TR and the Proximity Services Team::::
+::::General Overview of work between NETWORK-SUPPORT and the Proximity Services Team::::
 
 Note: $PS_TEAM team will make sure the cables are labelled
 1.$PS_TEAM will remove blades from slot1 and slot3 from the chassis $VIPRION_HOSTNAME
@@ -31,7 +31,7 @@ Note: $PS_TEAM team will make sure the cables are labelled
 7.NETWORK-SUPPORT will make sure all the blades (at least slot 1 and slot3) come back to "available" and the CI is in Standby and In Sync with active unit (no guests on this unit as it is not running VCMP)
 8.$PS_TEAM team will re-connect the traffic links per labeling 
 
-::::Detailed instructions for NETWORK-SUPPORT-TR on how to run the EUD based on appropriate appliance model::::
+::::Detailed instructions for NETWORK-SUPPORT on how to run the EUD based on appropriate appliance model::::
 
 VIPRION® B2000 Series Blades
 https://techdocs.f5.com/content/kb/en-us/products/big-ip_ltm/releasenotes/related/eud-vf/_jcr_content/pdfAttach/download_0/file.res/eud-vf.pdf
